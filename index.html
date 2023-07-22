@@ -4,15 +4,13 @@
 <title>Draw Lines on Image</title>
 <style>
 #myCanvas {
-  border: 1px solid #000; /* Add a border to the canvas for visibility */
-  cursor: crosshair; /* Set the cursor to crosshair to indicate drawing mode */
+border: 1px solid #000; /* Add a border to the canvas for visibility */
+cursor: crosshair; /* Set the cursor to crosshair to indicate drawing mode */
 }
 </style>
 </head>
 <body>
 <canvas id="myCanvas"></canvas>
-<h5 id="pixelDistance"></h5>
-<h5 id="mmDistance"></h5>
 
 <script>
 const canvas = document.getElementById('myCanvas');
@@ -25,6 +23,9 @@ const imageCtx = imageCanvas.getContext('2d');
 let isDrawing = false;
 let lines = [];
 let startCoords = { x: 0, y: 0 };
+let initialPinchDistance = 0;
+let initialCanvasWidth = 0;
+let initialCanvasHeight = 0;
 
 // Event listener for mouse down and touch start
 canvas.addEventListener('mousedown', handleStart);
@@ -37,6 +38,9 @@ canvas.addEventListener('touchmove', handleMove);
 // Event listener for mouse up and touch end
 canvas.addEventListener('mouseup', handleEnd);
 canvas.addEventListener('touchend', handleEnd);
+
+// Event listener for touch start with two fingers (zoom-in gesture)
+canvas.addEventListener('touchstart', handleZoomStart);
 
 // Function to handle the start of drawing
 function handleStart(event) {
@@ -60,13 +64,25 @@ function handleEnd(event) {
   const endCoords = getCanvasCoordinates(event);
   lines.push([{ ...startCoords }, { ...endCoords }]); // Push the completed line to the lines array
 
-  // Calculate and display the distance between start and end points
+  // Calculate and log the distance between start and end points
   const distance = calculateDistance(startCoords, endCoords);
-  const pixelDistanceElement = document.getElementById('pixelDistance');
-  const mmDistanceElement = document.getElementById('mmDistance');
-  pixelDistanceElement.textContent = 'Distance between startCoords and endCoords: ' + distance.toFixed(2) + ' pixels';
-  mmDistanceElement.textContent = 'Distance in mm: ' + (distance * 0.04536).toFixed(2) + ' mm';
+  console.log('Distance between startCoords and endCoords: ' + distance.toFixed(2) + ' pixels');
   event.preventDefault();
+}
+
+// Function to handle touch start with two fingers (zoom-in gesture)
+function handleZoomStart(event) {
+  if (event.touches.length === 2) {
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
+    initialPinchDistance = calculateDistance(
+      { x: touch1.clientX, y: touch1.clientY },
+      { x: touch2.clientX, y: touch2.clientY }
+    );
+    initialCanvasWidth = canvas.width;
+    initialCanvasHeight = canvas.height;
+    event.preventDefault();
+  }
 }
 
 // Function to get the canvas coordinates of the mouse pointer or touch point
