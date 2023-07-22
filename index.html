@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Draw Lines on Image</title>
+<style>
+#myCanvas {
+  border: 1px solid #000; /* Add a border to the canvas for visibility */
+  cursor: crosshair; /* Set the cursor to crosshair to indicate drawing mode */
+}
+</style>
+</head>
+<body>
+<canvas id="myCanvas"></canvas>
+<h5 id="pixelDistance"></h5>
+<h5 id="mmDistance"></h5>
+
+<script>
+const canvas = document.getElementById('myCanvas');
+const ctx = canvas.getContext('2d');
+
+// Store the original image in a separate canvas
+const imageCanvas = document.createElement('canvas');
+const imageCtx = imageCanvas.getContext('2d');
+
+let isDrawing = false;
+let lines = [];
+let startCoords = { x: 0, y: 0 };
+
+// Event listener for mouse down and touch start
+canvas.addEventListener('mousedown', handleStart);
+canvas.addEventListener('touchstart', handleStart);
+
+// Event listener for mouse move and touch move
+canvas.addEventListener('mousemove', handleMove);
+canvas.addEventListener('touchmove', handleMove);
+
+// Event listener for mouse up and touch end
+canvas.addEventListener('mouseup', handleEnd);
+canvas.addEventListener('touchend', handleEnd);
+
+// Function to handle the start of drawing
+function handleStart(event) {
+  isDrawing = true;
+  startCoords = getCanvasCoordinates(event);
+  event.preventDefault();
+}
+
+// Function to handle the ongoing drawing
+function handleMove(event) {
+  if (!isDrawing) return;
+  const currentCoords = getCanvasCoordinates(event);
+  drawLine(startCoords, currentCoords);
+  event.preventDefault();
+}
+
+// Function to handle the end of drawing
+function handleEnd(event) {
+  if (!isDrawing) return;
+  isDrawing = false;
+  const endCoords = getCanvasCoordinates(event);
+  lines.push([{ ...startCoords }, { ...endCoords }]); // Push the completed line to the lines array
+
+  // Calculate and display the distance between start and end points
+  const distance = calculateDistance(startCoords, endCoords);
+  const pixelDistanceElement = document.getElementById('pixelDistance');
+  const mmDistanceElement = document.getElementById('mmDistance');
+  pixelDistanceElement.textContent = 'Distance between startCoords and endCoords: ' + distance.toFixed(2) + ' pixels';
+  mmDistanceElement.textContent = 'Distance in mm: ' + (distance * 0.04536).toFixed(2) + ' mm';
+  event.preventDefault();
+}
+
+// Function to get the canvas coordinates of the mouse pointer or touch point
+function getCanvasCoordinates(event) {
+  const rect = canvas.getBoundingClientRect();
+  let x, y;
+  if (event.type.startsWith('mouse')) {
+    x = event.clientX - rect.left;
+    y = event.clientY - rect.top;
+  } else if (event.type.startsWith('touch')) {
+    x = event.touches[0].clientX - rect.left;
+    y = event.touches[0].clientY - rect.top;
+  }
+  return { x, y };
+}
+
+// Function to draw the original image on the main canvas
+function drawImageOnCanvas() {
+  canvas.width = imageCanvas.width;
+  canvas.height = imageCanvas.height;
+  ctx.drawImage(imageCanvas, 0, 0);
+}
+
+// Function to draw all the stored lines on the canvas
+function drawLines(linesToDraw) {
+  drawImageOnCanvas();
+
+  linesToDraw.forEach((line) => {
+    ctx.beginPath();
+    ctx.moveTo(line[0].x, line[0].y);
+    ctx.lineTo(line[1].x, line[1].y);
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  });
+}
+
+// Function to draw a line between two points
+function drawLine(startCoords, endCoords) {
+  drawLines([...lines]); // Draw all completed lines
+
+  ctx.beginPath();
+  ctx.moveTo(startCoords.x, startCoords.y);
+  ctx.lineTo(endCoords.x, endCoords.y);
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+}
+
+// Function to calculate the distance between two points
+function calculateDistance(point1, point2) {
+  const dx = point2.x - point1.x;
+  const dy = point2.y - point1.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// Load the image
+const image = new Image();
+image.src = 'images/eye8.jpeg'; // Replace with your image path
+
+// Draw the image on the separate canvas once it's loaded
+image.onload = function () {
+  imageCanvas.width = image.width;
+  imageCanvas.height = image.height;
+  imageCtx.drawImage(image, 0, 0);
+  drawImageOnCanvas(); // Draw the image on the main canvas once
+};
+</script>
+</body>
+</html>
