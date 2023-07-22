@@ -4,13 +4,15 @@
 <title>Draw Lines on Image</title>
 <style>
 #myCanvas {
-border: 1px solid #000; /* Add a border to the canvas for visibility */
-cursor: crosshair; /* Set the cursor to crosshair to indicate drawing mode */
+  border: 1px solid #000; /* Add a border to the canvas for visibility */
+  cursor: crosshair; /* Set the cursor to crosshair to indicate drawing mode */
 }
 </style>
 </head>
 <body>
 <canvas id="myCanvas"></canvas>
+<h5 id="pixelDistance"></h5>
+<h5 id="mmDistance"></h5>
 
 <script>
 const canvas = document.getElementById('myCanvas');
@@ -23,9 +25,10 @@ const imageCtx = imageCanvas.getContext('2d');
 let isDrawing = false;
 let lines = [];
 let startCoords = { x: 0, y: 0 };
-let initialPinchDistance = 0;
-let initialCanvasWidth = 0;
-let initialCanvasHeight = 0;
+
+// Variables for pinch-to-zoom
+let lastZoomDistance = 0;
+let lastScale = 1;
 
 // Event listener for mouse down and touch start
 canvas.addEventListener('mousedown', handleStart);
@@ -39,7 +42,7 @@ canvas.addEventListener('touchmove', handleMove);
 canvas.addEventListener('mouseup', handleEnd);
 canvas.addEventListener('touchend', handleEnd);
 
-// Event listener for touch start with two fingers (zoom-in gesture)
+// Event listener for touch start with two fingers (pinch gesture)
 canvas.addEventListener('touchstart', handleZoomStart);
 
 // Function to handle the start of drawing
@@ -64,23 +67,53 @@ function handleEnd(event) {
   const endCoords = getCanvasCoordinates(event);
   lines.push([{ ...startCoords }, { ...endCoords }]); // Push the completed line to the lines array
 
-  // Calculate and log the distance between start and end points
+  // Calculate and display the distance between start and end points
   const distance = calculateDistance(startCoords, endCoords);
-  console.log('Distance between startCoords and endCoords: ' + distance.toFixed(2) + ' pixels');
+  const pixelDistanceElement = document.getElementById('pixelDistance');
+  const mmDistanceElement = document.getElementById('mmDistance');
+  pixelDistanceElement.textContent = 'Distance between startCoords and endCoords: ' + distance.toFixed(2) + ' pixels';
+  mmDistanceElement.textContent = 'Distance in mm: ' + (distance * 0.04536).toFixed(2) + ' mm';
   event.preventDefault();
 }
 
-// Function to handle touch start with two fingers (zoom-in gesture)
+// Function to handle touch start with two fingers (pinch gesture)
 function handleZoomStart(event) {
   if (event.touches.length === 2) {
     const touch1 = event.touches[0];
     const touch2 = event.touches[1];
-    initialPinchDistance = calculateDistance(
+    lastZoomDistance = calculateDistance(
       { x: touch1.clientX, y: touch1.clientY },
       { x: touch2.clientX, y: touch2.clientY }
     );
-    initialCanvasWidth = canvas.width;
-    initialCanvasHeight = canvas.height;
+    lastScale = 1;
+    event.preventDefault();
+  }
+}
+
+// Event listener for touch move with two fingers (pinch gesture)
+canvas.addEventListener('touchmove', handleZoomMove);
+
+// Function to handle touch move with two fingers (pinch gesture)
+function handleZoomMove(event) {
+  if (event.touches.length === 2) {
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
+    const currentZoomDistance = calculateDistance(
+      { x: touch1.clientX, y: touch1.clientY },
+      { x: touch2.clientX, y: touch2.clientY }
+    );
+
+    // Calculate the zoom scale based on the pinch distance change
+    const zoomFactor = currentZoomDistance / lastZoomDistance;
+    lastZoomDistance = currentZoomDistance;
+    lastScale *= zoomFactor;
+
+    // Limit the scale to a reasonable range (e.g., 0.5 to 3)
+    lastScale = Math.min(Math.max(lastScale, 0.5), 3);
+
+    // Redraw the image with the new scale and translation
+    drawImageOnCanvas();
+
     event.preventDefault();
   }
 }
@@ -101,9 +134,18 @@ function getCanvasCoordinates(event) {
 
 // Function to draw the original image on the main canvas
 function drawImageOnCanvas() {
-  canvas.width = imageCanvas.width;
-  canvas.height = imageCanvas.height;
-  ctx.drawImage(imageCanvas, 0, 0);
+  canvas.width = imageCanvas.width * lastScale;
+  canvas.height = imageCanvas.height * lastScale;
+
+  // Center the canvas when zoomed in
+  const translateX = (canvas.width - imageCanvas.width) / 2;
+  const translateY = (canvas.height - imageCanvas.height) / 2;
+
+  // Clear the canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw the image with the new scale and translation
+  ctx.drawImage(imageCanvas, translateX, translateY, imageCanvas.width * lastScale, imageCanvas.height * lastScale);
 }
 
 // Function to draw all the stored lines on the canvas
@@ -151,5 +193,4 @@ image.onload = function () {
   drawImageOnCanvas(); // Draw the image on the main canvas once
 };
 </script>
-</body>
-</html>
+</body
